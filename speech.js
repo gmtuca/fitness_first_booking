@@ -10,6 +10,7 @@ module.exports = {
   },
 
   tellDate: (dateStr) => {
-    return dateStr.replace(/^0+/, '')
+    [dayOfTheWeek, dayOfTheMonth] = dateStr.split(' ')
+    return dayOfTheWeek + ' ' + dayOfTheMonth.replace(/^0+/, '')
   }
 }
