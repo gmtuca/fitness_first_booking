@@ -1,8 +1,15 @@
 const request = require('request')
 const properties = require('./properties')
+const assert = require('assert')
+
+const ANY_CLASS = '-1'
 
 module.exports = {
   fetch: (criteria, callback) => {
+
+    if(!criteria.class){
+      criteria.class = ANY_CLASS
+    }
 
     console.log('Fetching list of classes based on criteria', criteria)
 
@@ -21,7 +28,7 @@ module.exports = {
         'X-Requested-With': 'XMLHttpRequest'
       },
       form: {
-        'Club': criteria.club,
+        'Club': properties.club,
         'Member': properties.member_id,
         'Random': Math.floor(Math.random() * Math.pow(2, 31)).toString(),
         'Class': criteria.class
@@ -36,24 +43,31 @@ module.exports = {
           throw 'Classes response was unsuccessful. ' + classesResponse['Message']
         }
 
-        const classDates = classesResponse['ClassDates'].filter((classDate) => {
-          if(!criteria.date){
-            return false
-          } else {
+        let classDates = classesResponse['ClassDates'];
+
+        if(criteria.date){
+          classDates = classDates.filter((classDate) => {
             const classStartOfDay = new Date(classDate['Date'].match(/\d+/)[0] * 1)
             classStartOfDay.setHours(0,0,0,0)
 
             return criteria.date.getTime() == classStartOfDay.getTime()
-          }
-        });
-
-        if(!classDates || classDates.length === 0){
-          callback([])
-        } else if(classDates.length === 1){
-          callback(classDates[0])
-        } else {
-          throw 'Only up to one class date should match ' + criteria.date
+          });
         }
+
+        if(criteria.booked){ //TODO fitness first bug - all bookings have 'Booked' = false
+          classDates.forEach((classDate) => {
+            classDate['Classes'] = classDate['Classes'].filter((aClass) => {
+              if(Math.floor(Math.random() * 16) == 5){ //TODO remove
+                return true
+              }
+              return aClass['Booked'] == true
+            })
+          })
+
+          classDates = classDates.filter((classDate) => classDate['Classes'].length > 0)
+        }
+
+        callback(classDates)
       } else {
         throw '(' + response.statusCode + ') ' + error
       }

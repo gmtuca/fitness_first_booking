@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "alexa-sdk": "^1.0.25",
+    "assert": "^1.4.1",
     "request": "^2.88.0"
   }
 }

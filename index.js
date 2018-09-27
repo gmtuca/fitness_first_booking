@@ -3,8 +3,10 @@
 
 'use strict';
 
-const Alexa = require('alexa-sdk');
-const classes = require('./classes');
+const Alexa = require('alexa-sdk')
+const classes = require('./classes')
+const speech = require('./speech')
+const assert = require('assert')
 
 const APP_ID = 'amzn1.ask.skill.01b29b73-41cc-4ac0-8563-b6d5c82753e1';
 
@@ -13,28 +15,46 @@ const HELP_MESSAGE = 'You can ask me to make a new booking, view your bookings o
 const HELP_REPROMPT = 'Sorry mate, do you need a spot?';
 const STOP_MESSAGE = 'See you after the work out!';
 
-const tomorrow = new Date()
-tomorrow.setDate(tomorrow.getDate()+1)
-tomorrow.setHours(0,0,0,0)
+const today = (plusDays) => {
+  const d = new Date()
+  d.setDate(d.getDate() + (plusDays ? plusDays : 0))
+  d.setHours(0,0,0,0)
+  return d
+}
 
-const fetch = (criteria, callback) => {
-  classes.fetch(criteria, (classDate) => {
-    const classes = classDate['Classes']
+const tomorrow = () => {
+  return today(+1)
+}
 
+const dayAfterTomorrow = () => {
+  return today(+2)
+}
+
+const fetchBooked = (criteria, callback) => {
+  assert(criteria.booked)
+
+  classes.fetch(criteria, (classDates) => {
     let responseText;
 
-    if(!classes || classes.length === 0){
-      responseText = 'There are no spin classes for this date'
-    } else if(classes.length === 1){
-      responseText = 'There is a spin class on ' + classDate['FriendlyDateString'] + ' at ' + classes[0]['FriendlyStartTimeString']
+    if(classDates.length === 0){
+      responseText = 'You have no bookings for this ' + (criteria.date ? 'date ' : 'week') + '.'
+    } else if(classDates.length === 1 && classDates[0]['Classes'].length === 1){
+      responseText = 'You have one booking for '
+                      + classDates[0]['Classes']['Name'] + ' on '
+                      + speech.tellDate(classDate['FriendlyDateString']) + ' at '
+                      + speech.tellTime(classDates[0]['Classes']['FriendlyStartTimeString'])
     } else {
-      responseText = 'There are ' + classes.length + ' spin classes on ' + classDate['FriendlyDateString'] + ', at ' +
-                      classes.map((aClass) => aClass['FriendlyStartTimeString'])
-                             .join()
+      responseText = 'You have the following bookings this week. ' +
+                      classDates.map(classDate => {
+                        return ' on ' + speech.tellDate(classDate['FriendlyDateString']) + ' you have '
+                                     + classDate['Classes'].map(aClass => {
+                                        return aClass['Name'] + ' at ' + speech.tellTime(aClass['FriendlyStartTimeString'])
+                                      }).join()
+                                        .replace(/,(?=[^,]*$)/, ' and ')
+                      }).join()
     }
 
     console.log(responseText)
-
     callback(responseText)
   })
 }
@@ -48,10 +68,9 @@ const handlers = {
       this.emit(':responseReady')
     },
     'WhatAreMyBookingsIntent': function() {
-      fetch({
-        club: 'BRIGH', //TODO
-        class: 'spin', //TODO
-        date: tomorrow
+      fetchBooked({
+        booked: true
+        //date: tomorrow
       }, (responseText) => {
         this.response.speak(responseText)
         this.emit(':responseReady')
