@@ -15,22 +15,20 @@ const HELP_MESSAGE = 'You can ask me to make a new booking, view your bookings o
 const HELP_REPROMPT = 'Sorry mate, do you need a spot?';
 const STOP_MESSAGE = 'See you after the work out!';
 
-const today = (plusDays) => {
-  const d = new Date()
-  d.setDate(d.getDate() + (plusDays ? plusDays : 0))
-  d.setHours(0,0,0,0)
-  return d
+const makeBooking = (criteria, callback) => {
+  try {
+    classes.book(criteria, (bookingResponse) => {
+      let responseText = 'I have booked you for xxxxxx on xxxxx at xxxxxxx'
+
+      console.log(responseText)
+      callback(responseText)
+    })
+  } catch(err) {
+    callback(err)
+  }
 }
 
-const tomorrow = () => {
-  return today(+1)
-}
-
-const dayAfterTomorrow = () => {
-  return today(+2)
-}
-
-const fetchBooked = (criteria, callback) => {
+const fetchBookings = (criteria, callback) => {
   assert(criteria.booked)
 
   classes.fetch(criteria, (classDates) => {
@@ -40,9 +38,9 @@ const fetchBooked = (criteria, callback) => {
       responseText = 'You have no bookings for this ' + (criteria.date ? 'date ' : 'week') + '.'
     } else if(classDates.length === 1 && classDates[0]['Classes'].length === 1){
       responseText = 'You have one booking for '
-                      + classDates[0]['Classes']['Name'] + ' on '
-                      + speech.tellDate(classDate['FriendlyDateString']) + ' at '
-                      + speech.tellTime(classDates[0]['Classes']['FriendlyStartTimeString'])
+                      + classDates[0]['Classes'][0]['Name'] + ' on '
+                      + speech.tellDate(classDates[0]['FriendlyDateString']) + ' at '
+                      + speech.tellTime(classDates[0]['Classes'][0]['FriendlyStartTimeString'])
     } else {
       responseText = 'You have the following bookings this week. ' +
                       classDates.map(classDate => {
@@ -59,16 +57,32 @@ const fetchBooked = (criteria, callback) => {
   })
 }
 
+makeBooking({
+  classId: '839697'
+}, (responseText) => {
+})
+
+/*
+fetchBookings({
+  booked: true
+  //date: tomorrow
+}, (responseText) => {
+})*/
+
 const handlers = {
     'LaunchRequest': function() {
         this.emit('WhatAreMyBookingsIntent');
     },
-    'LoginIntent': function() {
-      this.response.speak('Doesn\'t work yet. Sorry...')
-      this.emit(':responseReady')
+    'MakeBookingIntent': function() {
+      makeBooking({
+        classId: '839697'
+      }, (responseText) => {
+        this.response.speak(responseText)
+        this.emit(':responseReady')
+      })
     },
     'WhatAreMyBookingsIntent': function() {
-      fetchBooked({
+      fetchBookings({
         booked: true
         //date: tomorrow
       }, (responseText) => {
